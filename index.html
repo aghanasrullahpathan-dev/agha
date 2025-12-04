@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>My Games Hub</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>My Games Hub</h1>
+    <p>Play games — click a tile. Add more games into <code>/games/</code>.</p>
+  </header>
+
+  <main class="container">
+    <aside class="library">
+      <h2>Games</h2>
+      <ul id="gameList">
+        <li data-src="games/galaxy/index.html">
+          <div class="thumb">🚀</div>
+          <div class="meta"><strong>Galaxy Shooter</strong><br><small>2D space shooter</small></div>
+        </li>
+
+        <li data-src="games/car/index.html">
+          <div class="thumb">🚗</div>
+          <div class="meta"><strong>Simple Car</strong><br><small>Top-down car dodger</small></div>
+        </li>
+
+        <li data-src="games/platformer/index.html">
+          <div class="thumb">🏃</div>
+          <div class="meta"><strong>snake simple</strong><br><small>2D snake simple</small></div>
+        </li>
+      </ul>
+
+      <div class="notes">
+        <small>To add a game: create folder in <code>/games/</code> with its own <code>index.html</code>, then add an <code>&lt;li data-src="games/yourgame/index.html"&gt;</code> entry above.</small>
+      </div>
+    </aside>
+
+    <section class="player">
+      <div class="player-header">
+        <h2 id="title">Select a game</h2>
+        <div class="controls">
+          <button id="openNew">Open in new tab</button>
+          <button id="refreshBtn">Reload</button>
+        </div>
+      </div>
+
+      <div class="framewrap">
+        <iframe id="gameFrame" src="" frameborder="0" sandbox="allow-same-origin allow-scripts allow-forms allow-pointer-lock"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Made with ♥ — Drop new games into <code>/games/</code></footer>
+
+<script>
+  const list = document.getElementById('gameList');
+  const frame = document.getElementById('gameFrame');
+  const title = document.getElementById('title');
+  const openNew = document.getElementById('openNew');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  list.addEventListener('click', (e) => {
+    const li = e.target.closest('li');
+    if (!li) return;
+    const src = li.dataset.src;
+    frame.src = src;
+    title.textContent = li.querySelector('.meta strong').textContent;
+  });
+
+  openNew.addEventListener('click', () => {
+    if (frame.src) window.open(frame.src, '_blank');
+  });
+  refreshBtn.addEventListener('click', () => { frame.contentWindow.location.reload(); });
+
+  // auto-load first game
+  const first = list.querySelector('li');
+  if (first) first.click();
+</script>
+</body>
+</html>

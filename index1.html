@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Ninja Jump Game (Auto Restart)</title>
+<style>
+    body {
+        margin: 0;
+        background: #222;
+        overflow: hidden;
+    }
+    canvas {
+        display: block;
+        margin: auto;
+        background: linear-gradient(#4fc3f7, #0288d1);
+        border-bottom: 6px solid #444;
+    }
+</style>
+</head>
+
+<body>
+<canvas id="game" width="600" height="300"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Restart function
+function restartGame() {
+    player = { x: 60, y: 220, w: 40, h: 40, dy: 0, jump: false };
+    spikes = [];
+    spawnTime = 0;
+    score = 0;
+}
+
+// Game variables
+let player, spikes, spawnTime, score;
+restartGame();  // Start first time
+
+let gravity = 0.6;
+
+// Controls
+document.addEventListener("keydown", e => {
+    if (e.key === " " || e.key === "ArrowUp") jump();
+});
+
+function jump() {
+    if (!player.jump) {
+        player.dy = -12;
+        player.jump = true;
+    }
+}
+
+function spawnSpike() {
+    spikes.push({
+        x: 600,
+        y: 250,
+        w: 30,
+        h: 40
+    });
+}
+
+function update() {
+    // Player movement
+    player.dy += gravity;
+    player.y += player.dy;
+
+    // Ground collision
+    if (player.y + player.h >= 260) {
+        player.y = 260 - player.h;
+        player.dy = 0;
+        player.jump = false;
+    }
+
+    // Spawning spikes
+    spawnTime++;
+    if (spawnTime % 70 === 0) spawnSpike();
+
+    // Moving spikes
+    spikes.forEach(s => s.x -= 6);
+    spikes = spikes.filter(s => s.x > -40);
+
+    // Collision detection
+    for (let s of spikes) {
+        if (
+            player.x < s.x + s.w &&
+            player.x + player.w > s.x &&
+            player.y < s.y + s.h &&
+            player.y + player.h > s.y
+        ) {
+            restartGame();   // ← Auto Restart!
+            return;
+        }
+    }
+
+    score++;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, 600, 300);
+
+    // Ninja
+    ctx.fillStyle = "black";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x, player.y + 10, 40, 8);
+
+    // Spikes
+    ctx.fillStyle = "#333";
+    spikes.forEach(s => {
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y + s.h);
+        ctx.lineTo(s.x + s.w / 2, s.y);
+        ctx.lineTo(s.x + s.w, s.y + s.h);
+        ctx.closePath();
+        ctx.fill();
+    });
+
+    // Score
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.fillText("Score: " + score, 10, 25);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

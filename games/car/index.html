@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Mini Car Game</title>
+<style>
+    body { margin: 0; background: #000; }
+    canvas { background: #222; display: block; margin: auto; }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="300" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function createMiniCar(x, y, color) {
+    return {
+        x, y,
+        w: 40,
+        h: 60,
+        color
+    };
+}
+
+let player;
+let cars;
+let laneX = [50, 125, 200];
+let speed;
+let score;
+let spawnTimer;
+
+function resetGame() {
+    player = createMiniCar(125, 420, "#00ffcc");  // mint colored player mini-car
+    cars = [];
+    speed = 4;
+    score = 0;
+    spawnTimer = 0;
+}
+
+resetGame();
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft" && player.x > 50) player.x -= 75;
+    if (e.key === "ArrowRight" && player.x < 200) player.x += 75;
+});
+
+function spawnCar() {
+    cars.push(
+        createMiniCar(
+            laneX[Math.floor(Math.random() * 3)],
+            -100,
+            ["#ff4444","#ffbb00","#66ff66","#3399ff"][Math.floor(Math.random()*4)]
+        )
+    );
+}
+
+function update() {
+    score++;
+
+    cars.forEach(c => c.y += speed);
+
+    cars = cars.filter(c => c.y < 600);
+
+    // COLLISION
+    for (let c of cars) {
+        if (
+            player.x < c.x + c.w &&
+            player.x + player.w > c.x &&
+            player.y < c.y + c.h &&
+            player.y + player.h > c.y
+        ) {
+            // AUTO RESTART
+            resetGame();
+            return;
+        }
+    }
+}
+
+function drawMiniCar(car) {
+    ctx.fillStyle = car.color;
+    // body
+    ctx.fillRect(car.x, car.y, car.w, car.h);
+    // windows
+    ctx.fillStyle = "#111";
+    ctx.fillRect(car.x + 8, car.y + 10, car.w - 16, 15);
+    ctx.fillRect(car.x + 8, car.y + 35, car.w - 16, 15);
+}
+
+function drawRoad() {
+    ctx.fillStyle = "#555";
+    ctx.fillRect(40, 0, 220, 500);
+
+    ctx.strokeStyle = "white";
+    ctx.setLineDash([20, 15]);
+
+    ctx.beginPath();
+    ctx.moveTo(115, 0);
+    ctx.lineTo(115, 500);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(190, 0);
+    ctx.lineTo(190, 500);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, 300, 500);
+
+    drawRoad();
+
+    drawMiniCar(player);
+
+    cars.forEach(c => drawMiniCar(c));
+
+    ctx.fillStyle = "white";
+    ctx.font = "18px Arial";
+    ctx.fillText("Score: " + score, 10, 20);
+}
+
+function loop() {
+    update();
+    draw();
+
+    spawnTimer++;
+    if (spawnTimer > 50) {
+        spawnCar();
+        spawnTimer = 0;
+    }
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

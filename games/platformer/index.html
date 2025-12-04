@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ur">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple Snake Game</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --board: #071028;
+      --snake: #34d399;
+      --food: #fb7185;
+      --text: #e6eef8;
+    }
+    html,body { height:100%; margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; }
+    .container { width: 760px; max-width:95vw; display:grid; grid-template-columns: 1fr 220px; gap:16px; }
+    .board { background:var(--board); border-radius:12px; padding:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; }
+    canvas { background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border-radius:8px; display:block; }
+    .panel { background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:14px; border-radius:12px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); min-height:150px; }
+    h1{ font-size:18px; margin:0 0 4px 0; }
+    .score { font-size:28px; font-weight:700; }
+    .small { font-size:13px; color:rgba(230,238,248,0.75); }
+    button{ padding:10px 12px; border-radius:8px; border:none; cursor:pointer; background:#111827; color:var(--text); }
+    .controls { display:flex; gap:8px; flex-direction:column; }
+    .footer { margin-top:auto; font-size:12px; color:rgba(230,238,248,0.7); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="board">
+      <canvas id="game" width="520" height="520"></canvas>
+    </div>
+    <div class="panel">
+      <div>
+        <h1>Snake — آسان گیم</h1>
+        <div class="small">Use arrow keys یا W A S D سے کھیلو</div>
+      </div>
+
+      <div>
+        <div class="small">Score</div>
+        <div class="score" id="score">0</div>
+      </div>
+
+      <div>
+        <div class="small">Highscore (local)</div>
+        <div class="score" id="highscore">0</div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn">شروع کریں / ری اسٹارٹ</button>
+        <div class="small">گیم رفتار اور گرڈ سائز کنفیگر کرنے کے لیے نیچے دیکھیں:</div>
+        <label class="small">Speed: <input id="speed" type="range" min="4" max="18" value="9"></label>
+        <label class="small">Grid size: <input id="gridSize" type="range" min="10" max="30" value="20"></label>
+      </div>
+
+      <div class="footer">Built with HTML5 Canvas • Save automatically in browser</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('highscore');
+  const startBtn = document.getElementById('startBtn');
+  const speedInput = document.getElementById('speed');
+  const gridInput = document.getElementById('gridSize');
+
+  let grid = parseInt(gridInput.value);         // cells per row/col
+  let cellSize = canvas.width / grid;
+  let speed = parseInt(speedInput.value);       // ticks per second
+  let tickInterval = 1000 / speed;
+
+  let snake = [];
+  let dir = {x:1, y:0};
+  let nextDir = {x:1,y:0};
+  let food = null;
+  let running = false;
+  let score = 0;
+  let timer = null;
+
+  const HIGH_KEY = 'snake_highscore_v1';
+  let highscore = parseInt(localStorage.getItem(HIGH_KEY) || '0');
+  highEl.textContent = highscore;
+
+  function reset() {
+    grid = parseInt(gridInput.value);
+    cellSize = canvas.width / grid;
+    speed = parseInt(speedInput.value);
+    tickInterval = 1000 / speed;
+
+    snake = [];
+    const startLen = 4;
+    const startX = Math.floor(grid/2);
+    const startY = Math.floor(grid/2);
+    for (let i = startLen-1; i >= 0; i--) {
+      snake.push({x: startX - i, y: startY});
+    }
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    placeFood();
+    score = 0;
+    scoreEl.textContent = score;
+  }
+
+  function placeFood() {
+    let tries=0;
+    while (true) {
+      const f = { x: Math.floor(Math.random()*grid), y: Math.floor(Math.random()*grid) };
+      if (!snake.some(s=>s.x===f.x && s.y===f.y)) { food = f; break; }
+      if (++tries > 200) { break; }
+    }
+  }
+
+  function drawCell(x,y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x*cellSize + 1, y*cellSize + 1, cellSize - 2, cellSize - 2);
+  }
+
+  function draw() {
+    // clear
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // background grid (subtle)
+    ctx.fillStyle = '#071128';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // food
+    if (food) drawCell(food.x, food.y, '#fb7185');
+
+    // snake
+    for (let i=0;i<snake.length;i++) {
+      const s = snake[i];
+      // head brighter
+      drawCell(s.x, s.y, i===snake.length-1 ? '#34d399' : '#10b981');
+    }
+  }
+
+  function step() {
+    // update direction
+    dir = nextDir;
+
+    const head = snake[snake.length-1];
+    const nx = head.x + dir.x;
+    const ny = head.y + dir.y;
+
+    // collision with walls
+    if (nx < 0 || ny < 0 || nx >= grid || ny >= grid) {
+      gameOver();
+      return;
+    }
+
+    // collision with self
+    if (snake.some(s => s.x === nx && s.y === ny)) {
+      gameOver();
+      return;
+    }
+
+    // move: push new head
+    snake.push({x: nx, y: ny});
+
+    // eat food?
+    if (food && nx === food.x && ny === food.y) {
+      score += 1;
+      scoreEl.textContent = score;
+      placeFood();
+    } else {
+      // remove tail
+      snake.shift();
+    }
+
+    draw();
+  }
+
+  function gameOver() {
+    running = false;
+    clearInterval(timer);
+    // update highscore
+    if (score > highscore) {
+      highscore = score;
+      localStorage.setItem(HIGH_KEY, String(highscore));
+      highEl.textContent = highscore;
+      alert('Game Over — New High Score: ' + score);
+    } else {
+      alert('Game Over — Score: ' + score);
+    }
+  }
+
+  function start() {
+    if (running) {
+      // restart
+      clearInterval(timer);
+    }
+    reset();
+    running = true;
+    timer = setInterval(() => {
+      step();
+    }, tickInterval);
+    draw();
+  }
+
+  // keyboard
+  window.addEventListener('keydown', (e) => {
+    const key = e.key;
+    const mapping = {
+      'ArrowUp': {x:0,y:-1}, 'w':{x:0,y:-1}, 'W':{x:0,y:-1},
+      'ArrowDown': {x:0,y:1}, 's':{x:0,y:1}, 'S':{x:0,y:1},
+      'ArrowLeft': {x:-1,y:0}, 'a':{x:-1,y:0}, 'A':{x:-1,y:0},
+      'ArrowRight': {x:1,y:0}, 'd':{x:1,y:0}, 'D':{x:1,y:0}
+    };
+    if (mapping[key]) {
+      const nd = mapping[key];
+      // prevent reversing
+      if (nd.x === -dir.x && nd.y === -dir.y) return;
+      nextDir = nd;
+      // prevent default scrolling with arrows
+      if (key.startsWith('Arrow')) e.preventDefault();
+    }
+  });
+
+  // controls
+  startBtn.addEventListener('click', start);
+  speedInput.addEventListener('input', () => {
+    // if running, change speed immediately
+    speed = parseInt(speedInput.value);
+    tickInterval = 1000 / speed;
+    if (running) {
+      clearInterval(timer);
+      timer = setInterval(() => step(), tickInterval);
+    }
+  });
+  gridInput.addEventListener('input', () => {
+    // if running, we reset so grid change applies
+    if (running) {
+      start();
+    }
+  });
+
+  // initialize UI values
+  scoreEl.textContent = '0';
+  highEl.textContent = highscore;
+
+  // start automatically once
+  start();
+
+})();
+</script>
+</body>
+</html>
